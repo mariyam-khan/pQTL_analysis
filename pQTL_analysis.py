@@ -3,41 +3,34 @@ import pandas as pd
 import os
 from collections import Counter
 
-data_generef = pd.read_csv('/home/mkh062/Desktop/scratch/Sean_paper/pQTL_MVMR/gene_ref.tsv', delimiter='\t')
+data_generef = pd.read_csv('~/pQTL_MVMR/pQTL_MVMR/gene_ref.tsv', delimiter='\t')
 # Loop through the rows of the 'Gene stable ID' column
+DATA2 = pd.read_csv('/Home/ii/mariyamk/pQTL_MVMR/pQTL_MVMR/SNP_ref.tsv', delimiter='\t')
+DATA3 = pd.read_csv(
+    '/Home/ii/mariyamk/pQTL_MVMR/pQTL_MVMR/plasma_STARNET_cases_matched_cis-pQTLs_500Kb.tsv',
+    delimiter='\t')
 for i in range(len(data_generef)):
     # Access the first row and first column element
     gene = data_generef.iloc[i, 0]
     chr = data_generef.iloc[i, 1]
     tss = data_generef.iloc[i, 2]
 
-    print("gene", gene)
-    print("chr", chr)
-    print("tss", tss)
-
     # Calculate the interval
     interval_size = 500000  # 500KB
+
     data_generef['interval_start'] = data_generef['tss'] - interval_size
     data_generef['interval_end'] = data_generef['tss'] + interval_size
 
-    DATA2 = pd.read_csv('/home/mkh062/Desktop/scratch/Sean_paper/pQTL_MVMR/SNP_ref.tsv', delimiter='\t')
-    # print("DATA2", DATA2.head())
-    # print("data_generef", data_generef.head())
-
-    # Assuming you have both df and DATA2 DataFrames as mentioned in your question
-
-    target_gene_chromosome = chr  # Chromosome of ENSG00000271782
+    target_gene_chromosome = chr
     target_gene_start = data_generef[data_generef['Gene stable ID'] == gene]['interval_start'].values[0]
     target_gene_end = data_generef[data_generef['Gene stable ID'] == gene]['interval_end'].values[0]
 
     # Now, filter the rs_numbers in DATA2 that match the chromosome and fall within the interval
     filtered_rs_numbers = DATA2[
         (DATA2['chromosome'] == target_gene_chromosome) & (DATA2['position'] >= target_gene_start) & (
-                    DATA2['position'] <= target_gene_end)]['rs_number']
+                DATA2['position'] <= target_gene_end)]['rs_number']
 
-    # Print the filtered rs_numbers
-    print(filtered_rs_numbers)
-
+  
     list = ['AOR', 'Blood', 'LIV', 'MAM', 'SF', 'SKLM', 'VAF']
     # Check if filtered_rs_numbers is not empty
     if not filtered_rs_numbers.empty:
@@ -46,7 +39,7 @@ for i in range(len(data_generef)):
         suffix_list = ['AOR', 'Blood', 'LIV', 'MAM', 'SF', 'SKLM', 'VAF']
 
         # Define the directory where your files are located
-        directory_path = '/home/mkh062/Desktop/scratch/Sean_paper/pQTL_MVMR'  # Replace with the actual path
+        directory_path = '/Home/ii/mariyamk/pQTL_MVMR/pQTL_MVMR'  # Replace with the actual path
 
         # Create an empty DataFrame to store the collected data
         collected_data = pd.DataFrame()
@@ -67,6 +60,26 @@ for i in range(len(data_generef)):
                 # Filter the data based on filtered_rs_numbers
                 filtered_data = df[df['rs_number'].isin(filtered_rs_numbers)]
 
+                num_rows = len(filtered_data)
+                print("num_rows", num_rows)
+                while num_rows > 500:
+                    interval_size -= 1000  # Decrease interval size
+                    print("Length greater than 500. Reducing interval size to:", interval_size)
+                    data_generef['interval_start'] = data_generef['tss'] - interval_size
+                    data_generef['interval_end'] = data_generef['tss'] + interval_size
+
+                    target_gene_start = data_generef[data_generef['Gene stable ID'] == gene]['interval_start'].values[0]
+                    target_gene_end = data_generef[data_generef['Gene stable ID'] == gene]['interval_end'].values[0]
+
+                    # Now, filter the rs_numbers in DATA2 that match the chromosome and fall within the interval
+                    filtered_rs_numbers = DATA2[
+                        (DATA2['chromosome'] == target_gene_chromosome) & (DATA2['position'] >= target_gene_start) & (
+                                DATA2['position'] <= target_gene_end)]['rs_number']
+
+                    filtered_data = df[df['rs_number'].isin(filtered_rs_numbers)]
+                    filtered_data.reset_index(drop=True)
+                    num_rows = len(filtered_data)
+                    print("num_rows_new", num_rows)
                 # Check if filtered_data is not empty
                 if not filtered_data.empty:
                     # Add a new column for gene name + suffix
@@ -82,13 +95,12 @@ for i in range(len(data_generef)):
 
         # Create a new DataFrame to store the results
         result_df = pd.DataFrame({'rs_number': unique_rs_numbers})
-        DATA3 = pd.read_csv('/home/mkh062/Desktop/scratch/Sean_paper/pQTL_MVMR/plasma_STARNET_cases_matched_cis-pQTLs_500Kb.tsv', delimiter='\t')
         # Merge result_df with DATA3 to get the beta values
         result_df = result_df.merge(DATA3[['rs_number', 'beta', 'p-value']], on='rs_number', how='left')
 
         # Rename the 'beta' column to 'beta.outcome'
         result_df = result_df.rename(columns={'beta': 'beta.outcome'})
-        # collected_data.to_csv("/home/mkh062/Desktop/scratch/Sean_paper/pQTL_MVMR/data" + gene + ".csv", sep="," )
+       
         Data_out = result_df
         Data_out = Data_out.sort_values(by='p-value', ascending=True)
         Data_out.reset_index(drop=True, inplace=True)
@@ -126,7 +138,7 @@ for i in range(len(data_generef)):
         df_s = pd.DataFrame(data=s_data)
         RandS = pd.concat([df_R, df_s], axis=1)
         RandS.index.name = 'rs_number'
-        RandS.to_csv("/home/mkh062/Desktop/scratch/Sean_paper/pQTL_MVMR/data_" + gene + ".csv", sep=",")
+        RandS.to_csv("/Home/ii/mariyamk/pQTL_MVMR/pQTL_MVMR/data_" + gene + ".csv", sep=",")
         print("########### saved ")
     else:
         print("filtered_rs_numbers is empty.")
